@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Finder | Trova il tuo match</title>
+  <style>
+    :root {
+      /* Colori adattabili: cambia #007AFF con il colore principale del tuo logo */
+      --primary: #111111;
+      --accent: #007AFF; 
+      --bg: #f8f9fa;
+      --card: #ffffff;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      color: var(--primary);
+    }
+
+    header {
+      background: white;
+      padding: 30px 20px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* Stile per il tuo Logo */
+    .logo-container img {
+      max-height: 100px; /* Altezza massima del logo */
+      width: auto;
+      margin-bottom: 15px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    main {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .quiz-card {
+      background: var(--card);
+      padding: 35px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h2 { font-size: 1.4rem; margin-bottom: 25px; line-height: 1.4; }
+
+    .option {
+      width: 100%;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 2px solid #f0f0f0;
+      border-radius: 12px;
+      background: white;
+      text-align: left;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .option:hover { border-color: var(--accent); background: #f9f9f9; }
+    .option.active { border-color: var(--accent); background: var(--accent); color: white; }
+
+    .next-btn {
+      width: 100%;
+      padding: 18px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    .next-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+    .hidden { display: none; }
+
+    .result-box {
+      text-align: center;
+      padding: 40px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .cta {
+      display: inline-block;
+      margin-top: 25px;
+      padding: 15px 35px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-container">
+    <img src="Logo.jpg" alt="Logo Aziendale">
+  </div>
+  <p>Il quiz intelligente per scegliere senza errori</p>
+</header>
+
+<main>
+  <div id="quiz-section">
+    <div class="progress-bar"><div id="fill" class="progress-fill"></div></div>
+    <div class="quiz-card">
+      <h2 id="question-text"></h2>
+      <div id="options-list"></div>
+      <button id="btn-next" class="next-btn" onclick="goToNext()" disabled>Continua</button>
+    </div>
+  </div>
+
+  <div id="result-section" class="hidden result-box"></div>
+</main>
+
+<script>
+const data = [
+  { q: "Qual è il tuo stile di vita prevalente?", o: ["Dinamico e sportivo", "Creativo e tecnologico"], p: ["s", "t"] },
+  { q: "Cosa cerchi in un prodotto?", o: ["Resistenza e durata", "Design e innovazione"], p: ["s", "t"] },
+  { q: "Dove utilizzeresti il tuo acquisto?", o: ["All'aperto o in palestra", "In casa o in ufficio"], p: ["s", "t"] },
+  { q: "Qual è la tua priorità?", o: ["Comodità e praticità", "Velocità e potenza"], p: ["s", "t"] },
+  { q: "Ti piace seguire le ultime mode?", o: ["No, bado alla sostanza", "Sì, voglio l'ultimo modello"], p: ["s", "t"] },
+  { q: "Come descriveresti il tuo budget?", o: ["Cerco il miglior affare", "Voglio il top di gamma"], p: ["s", "t"] },
+  { q: "Quanto usi lo smartphone al giorno?", o: ["Poco, preferisco muovermi", "Sempre, è il mio strumento"], p: ["s", "t"] },
+  { q: "Cosa apprezzi di più in un brand?", o: ["La storia e l'affidabilità", "L'esclusività e lo stile"], p: ["s", "t"] },
+  { q: "Qual è il tuo hobby principale?", o: ["Sport o viaggi", "Gaming o informatica"], p: ["s", "t"] },
+  { q: "Cosa ti aspetti da noi?", o: ["Consigli concreti", "Ispirazione tecnologica"], p: ["s", "t"] }
+];
+
+let index = 0;
+let points = { t: 0, s: 0 };
+let selection = null;
+
+function displayQ() {
+  const current = data[index];
+  document.getElementById("question-text").innerText = current.q;
+  document.getElementById("fill").style.width = `${(index / data.length) * 100}%`;
+  
+  const list = document.getElementById("options-list");
+  list.innerHTML = "";
+  selection = null;
+  document.getElementById("btn-next").disabled = true;
+
+  current.o.forEach((txt, i) => {
+    const b = document.createElement("button");
+    b.className = "option";
+    b.innerText = txt;
+    b.onclick = () => {
+      document.querySelectorAll('.option').forEach(el => el.classList.remove('active'));
+      b.classList.add('active');
+      selection = current.p[i];
+      document.getElementById("btn-next").disabled = false;
+    };
+    list.appendChild(b);
+  });
+}
+
+function goToNext() {
+  points[selection]++;
+  index++;
+  if(index < data.length) displayQ();
+  else showRes();
+}
+
+function showRes() {
+  document.getElementById("quiz-section").classList.add("hidden");
+  const res = document.getElementById("result-section");
+  res.classList.remove("hidden");
+
+  const isTech = points.t > points.s;
+  const title = isTech ? "Profilo Tech Enthusiast" : "Profilo Active & Sport";
+  const link = isTech ? "https://www.amazon.it" : "https://www.nike.com/it";
+
+  res.innerHTML = `
+    <h2>${title}</h2>
+    <p>In base alle tue risposte, ti consigliamo di esplorare queste soluzioni:</p>
+    <a href="${link}" class="cta" target="_blank">Scopri di più</a>
+  `;
+}
+
+displayQ();
+</script>
+</body>
+</html>
