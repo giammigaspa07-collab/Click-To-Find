@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Selection | Trova il prodotto perfetto</title>
+  <style>
+    :root {
+      --primary-blue: #00A8E8; 
+      --light-blue: #E1F5FE;   
+      --dark-blue: #007BB5;    
+      --white: #ffffff;
+      --text: #333;
+      --bg: #f0f4f8;           
+    }
+
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; color: var(--text); }
+    header { background: var(--white); padding: 30px; text-align: center; border-bottom: 3px solid var(--primary-blue); }
+    .logo-container img { max-height: 150px; width: auto; display: block; margin: 0 auto; }
+    
+    main { max-width: 750px; margin: 40px auto; padding: 0 20px; }
+    .progress-bar { height: 10px; background: #dceefb; border-radius: 20px; margin-bottom: 30px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary-blue); width: 0%; transition: width 0.4s; }
+
+    .quiz-card { background: var(--white); padding: 40px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    h2 { font-size: 1.5rem; color: var(--dark-blue); text-align: center; margin-bottom: 30px; }
+
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+
+    .option { 
+      padding: 20px; border: 2px solid var(--light-blue); border-radius: 15px; 
+      background: var(--white); cursor: pointer; transition: 0.2s; font-size: 15px;
+      color: var(--dark-blue); font-weight: 500; display: flex; align-items: center; justify-content: center;
+      min-height: 70px; text-align: center;
+    }
+    .option:hover { background: var(--light-blue); }
+    .option.active { background: var(--primary-blue); color: white; border-color: var(--primary-blue); }
+
+    .btn-group { display: flex; gap: 10px; margin-top: 30px; }
+    .next-btn { flex: 2; padding: 20px; background: var(--dark-blue); color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; }
+    .back-btn { flex: 1; padding: 20px; background: #ccc; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; }
+    
+    .next-btn:disabled, .back-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .hidden { display: none; }
+    
+    .result-box { text-align: center; padding: 50px; background: white; border-radius: 25px; }
+    .cta { display: inline-block; margin-top: 25px; padding: 18px 50px; background: var(--primary-blue); color: white; text-decoration: none; border-radius: 50px; font-weight: bold; }
+    .restart-link { display: block; margin-top: 20px; color: var(--dark-blue); cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-container"><img src="Logo.jpg" alt="Logo"></div>
+</header>
+
+<main>
+  <div id="quiz-ui">
+    <div class="progress-bar"><div id="fill" class="progress-fill"></div></div>
+    <div class="quiz-card">
+      <h2 id="q-text"></h2>
+      <div id="opts" class="options-grid"></div>
+      <div class="btn-group">
+        <button id="back" class="back-btn" onclick="prevStep()" disabled>Indietro</button>
+        <button id="next" class="next-btn" onclick="nextStep()" disabled>Avanti</button>
+      </div>
+    </div>
+  </div>
+  <div id="res-ui" class="hidden result-box"></div>
+</main>
+
+<script>
+const questions = [
+  { q: "1. Qual è il tuo settore di interesse principale?", o: ["Tecnologia & Gadget", "Abbigliamento & Moda", "Casa & Arredamento", "Sport & Outdoor"], p: ["tech", "fashion", "home", "sport"] },
+  { q: "2. Che tipo di budget hai a disposizione?", o: ["Premium / Lusso", "Qualità / Prezzo", "Budget Friendly", "Il meglio del meglio"], p: ["high", "mid", "low", "high"] },
+  { q: "3. Dove passi la maggior parte del tuo tempo?", o: ["Scrivania / Ufficio", "In città", "All'aperto", "In casa"], p: ["tech", "fashion", "sport", "home"] },
+  { q: "4. Cosa apprezzi di più nel design?", o: ["Minimalismo", "Eleganza", "Robustezza", "Originalità"], p: ["tech", "fashion", "sport", "home"] },
+  { q: "5. Rapporto con l'innovazione?", o: ["Voglio l'ultimo modello", "Aspetto recensioni", "Basta che funzioni", "Amo le smart home"], p: ["innov", "mid", "substance", "innov"] },
+  { q: "6. Stile di vita?", o: ["Sempre connesso", "Attento ai trend", "Sempre in movimento", "Amo il relax"], p: ["tech", "fashion", "sport", "home"] },
+  { q: "7. Cosa cerchi in un brand?", o: ["Prestigio", "Velocità", "Durata", "Risparmio"], p: ["high", "tech", "substance", "low"] },
+  { q: "8. Acquisto ideale?", o: ["Smartphone / PC", "Scarpe / Vestiti", "Attrezzi Sportivi", "Complementi Arredo"], p: ["tech", "fashion", "sport", "home"] },
+  { q: "9. Come decidi?", o: ["Istinto", "Dati Tecnici", "Prezzo più basso", "Recensioni"], p: ["style", "innov", "low", "mid"] },
+  { q: "10. Ti senti più...", o: ["Visionario", "Elegante", "Resistente", "Accogliente"], p: ["tech", "fashion", "sport", "home"] }
+];
+
+const catalog = {
+  "tech_high": { name: "Apple", url: "https://www.apple.com/it", desc: "Design d'eccellenza e innovazione." },
+  "tech_mid": { name: "Samsung", url: "https://www.samsung.com/it", desc: "La scelta versatile per ogni esigenza." },
+  "tech_low": { name: "Xiaomi", url: "https://www.mi.com/it", desc: "Il re del rapporto qualità-prezzo." },
+  "tech_innov": { name: "Dyson", url: "https://www.dyson.it", desc: "Tecnologia rivoluzionaria per la casa." },
+  "sport_high": { name: "Nike", url: "https://www.nike.com/it", desc: "Per chi vuole superare ogni limite." },
+  "sport_mid": { name: "Adidas", url: "https://www.adidas.it", desc: "Stile iconico e prestazioni costanti." },
+  "sport_low": { name: "Decathlon", url: "https://www.decathlon.it", desc: "Lo sport accessibile a tutti." },
+  "sport_substance": { name: "The North Face", url: "https://www.thenorthface.it", desc: "Perfetto per le tue avventure outdoor." },
+  "fashion_high": { name: "Farfetch", url: "https://www.farfetch.com", desc: "Il meglio del lusso globale." },
+  "fashion_mid": { name: "Zalando", url: "https://www.zalando.it", desc: "Moda infinita a portata di click." },
+  "fashion_low": { name: "ASOS", url: "https://www.asos.com/it", desc: "Stile giovane e prezzi imbattibili." },
+  "fashion_style": { name: "Zara", url: "https://www.zara.com/it", desc: "Le tendenze del momento, subito." },
+  "home_high": { name: "Artemide", url: "https://www.artemide.com", desc: "Illuminazione di design italiano." },
+  "home_mid": { name: "Westwing", url: "https://www.westwing.it", desc: "Ispirazione per una casa bellissima." },
+  "home_low": { name: "IKEA", url: "https://www.ikea.com/it", desc: "Design democratico per ogni spazio." },
+  "home_innov": { name: "Philips Hue", url: "https://www.philips-hue.com", desc: "L'illuminazione smart del futuro." }
+};
+
+let step = 0;
+let history = []; // Memoria delle scelte
+let currentChoice = null;
+
+function render() {
+  const q = questions[step];
+  document.getElementById("q-text").innerText = q.q;
+  document.getElementById("fill").style.width = `${(step / questions.length) * 100}%`;
+  document.getElementById("back").disabled = (step === 0);
+  
+  const container = document.getElementById("opts");
+  container.innerHTML = "";
+  document.getElementById("next").disabled = true;
+
+  q.o.forEach((text, i) => {
+    const b = document.createElement("button");
+    b.className = "option";
+    // Se stiamo tornando indietro, evidenzia la scelta fatta prima
+    if (history[step] === q.p[i]) b.classList.add("active");
+    
+    b.innerText = text;
+    b.onclick = () => {
+      document.querySelectorAll(".option").forEach(el => el.classList.remove("active"));
+      b.classList.add("active");
+      currentChoice = q.p[i];
+      document.getElementById("next").disabled = false;
+    };
+    container.appendChild(b);
+  });
+}
+
+function nextStep() {
+  history[step] = currentChoice;
+  step++;
+  if(step < questions.length) render();
+  else showResult();
+}
+
+function prevStep() {
+  if (step > 0) {
+    step--;
+    currentChoice = history[step];
+    render();
+    document.getElementById("next").disabled = false;
+  }
+}
+
+function showResult() {
+  document.getElementById("quiz-ui").classList.add("hidden");
+  const res = document.getElementById("res-ui");
+  res.classList.remove("hidden");
+
+  // Calcolo risultati semplificato basato sulle scelte in history
+  let points = {};
+  history.forEach(choice => points[choice] = (points[choice] || 0) + 1);
+
+  const cats = ["tech", "fashion", "home", "sport"];
+  const dCat = cats.reduce((a, b) => (points[a] || 0) > (points[b] || 0) ? a : b);
+  const styles = ["high", "mid", "low", "innov", "substance", "style"];
+  const dStyle = styles.reduce((a, b) => (points[a] || 0) > (points[b] || 0) ? a : b);
+
+  const match = catalog[dCat + "_" + dStyle] || catalog[dCat + "_mid"];
+
+  res.innerHTML = `
+    <h2 style="color:var(--primary-blue)">Risultato: ${match.name}</h2>
+    <p style="font-size:1.2rem;">${match.desc}</p>
+    <a href="${match.url}" class="cta" target="_blank">Vai al sito</a>
+    <span class="restart-link" onclick="location.reload()">Ricomincia il test</span>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>
